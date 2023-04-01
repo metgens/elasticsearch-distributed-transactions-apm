@@ -28,5 +28,5 @@ class Program
                 logging.ClearProviders();
                 logging.AddConsole();
             })
-            .UseElasticApm(new HttpDiagnosticsSubscriber());
+            .UseElasticApm();
 }

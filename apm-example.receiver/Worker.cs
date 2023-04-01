@@ -52,13 +52,17 @@ namespace apm_example.receiver
                     while (true)
                     {
                         var result = consumer.Consume();
-                        var tracingDataBytes = result.Message.Headers.FirstOrDefault(x => x.Key == "Traceparent").GetValueBytes();
-                        var tracingDataString = Encoding.UTF8.GetString(tracingDataBytes);
-                        var tracingData = DistributedTracingData.TryDeserializeFromString(tracingDataString);
-                        await _apmAgent.Tracer.CaptureTransaction("Distributed transaction", "background", async () =>
+                        DistributedTracingData tracingData = GetTraceData(result);
+                        await _apmAgent.Tracer.CaptureTransaction("Processing", "ingestion", async () =>
                         {
-                            Console.WriteLine($"Received message: {result.Message.Value} at offset {result.Offset}");
-                            await Task.Delay(3000);
+                            _apmAgent.Tracer.CurrentTransaction.SetLabel("eventId", Guid.NewGuid().ToString());
+                            
+                            _logger.LogInformation("Received message at offset {ResultOffset}", result.Offset);
+                            // TRANSFORM DATA
+                            await TransformData(result.Message);
+                            // SEND TO DB
+                            await SendToDb(result.Message);
+                            
                         }, tracingData);
                     }
                 }
@@ -72,6 +76,36 @@ namespace apm_example.receiver
                 }
             }
 
+        }
+
+        private async Task TransformData(Message<Ignore, string> data)
+        {
+            var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(TransformData), "data", async () =>
+            {
+                var randomDelay = new Random().Next(500, 800);
+                await Task.Delay(randomDelay);
+
+                return data;
+            })!;
+        }
+
+        private async Task SendToDb(Message<Ignore, string> data)
+        {
+            var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(SendToDb), "db", async () =>
+            {
+                var randomDelay = new Random().Next(500, 2000);
+                await Task.Delay(randomDelay);
+
+                return data;
+            })!;
+        }
+        
+        private static DistributedTracingData GetTraceData(ConsumeResult<Ignore, string> result)
+        {
+            var tracingDataBytes = result.Message.Headers.FirstOrDefault(x => x.Key == "Traceparent").GetValueBytes();
+            var tracingDataString = Encoding.UTF8.GetString(tracingDataBytes);
+            var tracingData = DistributedTracingData.TryDeserializeFromString(tracingDataString);
+            return tracingData;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
