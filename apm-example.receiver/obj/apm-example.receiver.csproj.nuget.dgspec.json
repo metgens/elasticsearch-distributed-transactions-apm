@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/maciejetgens/projects/elasticsearch-distributed-transactions-apm/apm-example.receiver/apm-example.receiver.csproj": {}
+  },
+  "projects": {
+    "/Users/maciejetgens/projects/elasticsearch-distributed-transactions-apm/apm-example.receiver/apm-example.receiver.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/maciejetgens/projects/elasticsearch-distributed-transactions-apm/apm-example.receiver/apm-example.receiver.csproj",
+        "projectName": "apm-example.receiver",
+        "projectPath": "/Users/maciejetgens/projects/elasticsearch-distributed-transactions-apm/apm-example.receiver/apm-example.receiver.csproj",
+        "packagesPath": "/Users/maciejetgens/.nuget/packages/",
+        "outputPath": "/Users/maciejetgens/projects/elasticsearch-distributed-transactions-apm/apm-example.receiver/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/maciejetgens/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "dependencies": {
+            "Confluent.Kafka": {
+              "target": "Package",
+              "version": "[2.0.2, )"
+            },
+            "Elastic.Apm.NetCoreAll": {
+              "target": "Package",
+              "version": "[1.20.0, )"
+            },
+            "Microsoft.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[6.0.1, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/x64/sdk/6.0.400/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

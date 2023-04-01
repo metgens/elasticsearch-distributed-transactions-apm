@@ -1,0 +1,27 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "apm-example.sender", "apm-example.sender\apm-example.sender.csproj", "{510F367F-6F9A-41E8-BD70-5C0F56ED990E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "apm-example.receiver", "apm-example.receiver\apm-example.receiver.csproj", "{DB17182A-8904-4423-8BAA-F76B89D244D1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastructure", "{18B07D25-41D1-45EC-8A33-171289F7AE5E}"
+	ProjectSection(SolutionItems) = preProject
+		infrastructure\docker-compose.yml = infrastructure\docker-compose.yml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{510F367F-6F9A-41E8-BD70-5C0F56ED990E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{510F367F-6F9A-41E8-BD70-5C0F56ED990E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{510F367F-6F9A-41E8-BD70-5C0F56ED990E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{510F367F-6F9A-41E8-BD70-5C0F56ED990E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB17182A-8904-4423-8BAA-F76B89D244D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB17182A-8904-4423-8BAA-F76B89D244D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB17182A-8904-4423-8BAA-F76B89D244D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB17182A-8904-4423-8BAA-F76B89D244D1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
