@@ -11,17 +11,10 @@ namespace apm_example.receiver
     {
         private readonly IApmAgent _apmAgent;
         private readonly ILogger _logger;
-        private readonly IProducer<Null, string> _producer;
 
         public Worker(IApmAgent apmAgent, ILogger<Worker> logger)
         {
             (_apmAgent, _logger) = (apmAgent, logger);
-            var kafkaConfig = new ProducerConfig
-            {
-                BootstrapServers = "kafka:9092",
-                ClientId = "sender"
-            };
-            _producer = new ProducerBuilder<Null, string>(kafkaConfig).Build();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -37,14 +30,14 @@ namespace apm_example.receiver
         {
             var config = new ConsumerConfig
             {
-                BootstrapServers = "kafka:9092", 
+                BootstrapServers = "kafka:9092",
                 GroupId = "my-group",
                 AutoOffsetReset = AutoOffsetReset.Earliest
             };
-
+            
             using (var consumer = new ConsumerBuilder<Ignore, string>(config).Build())
             {
-                var topic = "my-topic"; 
+                var topic = "my-topic";
                 consumer.Subscribe(topic);
 
                 try
@@ -52,37 +45,33 @@ namespace apm_example.receiver
                     while (true)
                     {
                         var result = consumer.Consume();
-                        DistributedTracingData tracingData = GetTraceData(result);
-                        await _apmAgent.Tracer.CaptureTransaction("Processing", "ingestion", async () =>
+                        DistributedTracingData? tracingData = GetTraceData(result);
+                        await _apmAgent.Tracer.CaptureTransaction("Processing", "cdc", async () =>
                         {
-                            _apmAgent.Tracer.CurrentTransaction.SetLabel("eventId", Guid.NewGuid().ToString());
-                            
-                            _logger.LogInformation("Received message at offset {ResultOffset}", result.Offset);
-                            // TRANSFORM DATA
+                            _logger.LogInformation("Received message at offset {ResultOffset}, with tracingData {TracingData}", result.Offset, tracingData?.SerializeToString()); // TRANSFORM DATA
+                            // TRANSFORM
                             await TransformData(result.Message);
                             // SEND TO DB
                             await SendToDb(result.Message);
-                            
                         }, tracingData);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
+                    _logger.LogError(ex, ex.Message);
                 }
                 finally
                 {
                     consumer.Close();
                 }
             }
-
         }
 
         private async Task TransformData(Message<Ignore, string> data)
         {
-            var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(TransformData), "data", async () =>
+            var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(TransformData), "transform-data", async () =>
             {
-                var randomDelay = new Random().Next(500, 800);
+                var randomDelay = new Random().Next(150, 200);
                 await Task.Delay(randomDelay);
 
                 return data;
@@ -93,23 +82,25 @@ namespace apm_example.receiver
         {
             var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(SendToDb), "db", async () =>
             {
-                var randomDelay = new Random().Next(500, 2000);
+                var randomDelay = new Random().Next(500, 1000);
                 await Task.Delay(randomDelay);
 
                 return data;
             })!;
         }
-        
-        private static DistributedTracingData GetTraceData(ConsumeResult<Ignore, string> result)
+
+        private static DistributedTracingData? GetTraceData(ConsumeResult<Ignore, string> result)
         {
-            var tracingDataBytes = result.Message.Headers.FirstOrDefault(x => x.Key == "Traceparent").GetValueBytes();
+            var tracingDataBytes = result.Message.Headers.FirstOrDefault(x => x.Key == "traceparent")?.GetValueBytes();
+            if (tracingDataBytes == null)
+                return null;
             var tracingDataString = Encoding.UTF8.GetString(tracingDataBytes);
             var tracingData = DistributedTracingData.TryDeserializeFromString(tracingDataString);
             return tracingData;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
-        { 
+        {
             return Task.CompletedTask;
         }
     }

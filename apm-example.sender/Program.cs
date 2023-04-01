@@ -2,6 +2,7 @@
 using Elastic.Apm.DiagnosticSource;
 using Elastic.Apm.Extensions.Hosting;
 using Elastic.Apm.SerilogEnricher;
+using Elastic.CommonSchema.Serilog;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -45,10 +46,8 @@ class Program
             .Enrich.FromLogContext()
             .Enrich.WithExceptionDetails()
             .Enrich.WithElasticApmCorrelationInfo()
-            .WriteTo.Debug()
             .WriteTo.Console()
             .WriteTo.Elasticsearch(ConfigureElasticSink(configuration, environment))
-            .Enrich.WithProperty("Environment", environment)
             .ReadFrom.Configuration(configuration)
             .CreateLogger();
         
@@ -59,7 +58,8 @@ class Program
         return new ElasticsearchSinkOptions(new Uri(configuration["ElasticConfiguration:Uri"]))
         {
             AutoRegisterTemplate = true,
-            IndexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name.ToLower().Replace(".", "-")}-{environment?.ToLower().Replace(".", "-")}-{DateTime.UtcNow:yyyy-MM}"
+            IndexFormat = $"cdc-demo-{DateTime.UtcNow:yyyy-MM}",
+            CustomFormatter = new EcsTextFormatter()
         };
     }
     

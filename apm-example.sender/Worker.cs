@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Unicode;
 using Confluent.Kafka;
 using Elastic.Apm;
 using Elastic.Apm.Api;
@@ -12,8 +13,9 @@ namespace apm_example.sender
     {
         private readonly IApmAgent _apmAgent;
         private readonly ILogger _logger;
-        private readonly IProducer<Null, byte[]> _producer;
-
+        private readonly IProducer<Null, string> _producer;
+        private int _i = 0;
+        
         public Worker(IApmAgent apmAgent, ILogger<Worker> logger)
         {
             (_apmAgent, _logger) = (apmAgent, logger);
@@ -22,7 +24,7 @@ namespace apm_example.sender
                 BootstrapServers = "kafka:9092",
                 ClientId = "sender"
             };
-            _producer = new ProducerBuilder<Null, byte[]>(kafkaConfig).Build();
+            _producer = new ProducerBuilder<Null, string>(kafkaConfig).Build();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -45,16 +47,18 @@ namespace apm_example.sender
 
         private async Task GetDataParseAndSendToQueue(CancellationToken cancellationToken)
         {
-            await _apmAgent.Tracer.CaptureTransaction("ChangeDataCapture", "ingestion", async () =>
+            await _apmAgent.Tracer.CaptureTransaction("ChangeDataCapture", "cdc", async () =>
             {
+                _apmAgent.Tracer.CurrentTransaction.SetLabel("correlationId",_i++.ToString());
+                
                 try
                 {
                     // 1. GET DATA
                     var data = await GetData(cancellationToken);
                     // 2. VALIDATE & PARSE DATA
-                    data = await ValidateAndParseData(data);
+                    var parsedData = await ValidateAndParseData(data);
                     // 3. SEND TO QUEUE
-                    await SendToQueue(data);
+                    await SendToQueue(parsedData);
                 }
                 catch (Exception ex)
                 {
@@ -66,8 +70,13 @@ namespace apm_example.sender
 
         private async Task<byte[]> GetData(CancellationToken cancellationToken)
         {
-            var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(GetData), "external", async () =>
+            var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(GetData), "getting-from-externals", async () =>
             {
+                var isAnError = new Random().Next(0, 100) % 3 == 0;
+
+                if (isAnError)
+                    throw new Exception("Network error");
+                
                 var httpClient = new HttpClient();
                 var response = await httpClient.GetAsync("https://elastic.co", cancellationToken);
                 
@@ -80,33 +89,33 @@ namespace apm_example.sender
             return result;
         }
 
-        private async Task<byte[]> ValidateAndParseData(byte[] data)
+        private async Task<string?> ValidateAndParseData(byte[] data)
         {
-            var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(ValidateAndParseData), "data", async () =>
+            var result = await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(ValidateAndParseData), "validation", async () =>
             {
                 var randomDelay = new Random().Next(300, 600);
                 await Task.Delay(randomDelay);
 
-                return data;
+                return Encoding.UTF8.GetString(data).Substring(100);
             })!;
 
             return result;
         }
         
-        private async Task SendToQueue(byte[] message)
+        private async Task SendToQueue(string message)
         {
-             await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(SendToQueue), "infrastructure", async () =>
+             await _apmAgent.Tracer.CurrentTransaction?.CaptureSpan(nameof(SendToQueue), "sending-to-queue", async () =>
              {
                  var topic = "my-topic";
                  
-                 var tracingData = Agent.Tracer.CurrentTransaction.OutgoingDistributedTracingData.SerializeToString();
+                 var tracingData = _apmAgent.Tracer.CurrentTransaction.OutgoingDistributedTracingData.SerializeToString();
                  var headers = new Headers
                  {
-                     new Header("Traceparent", Encoding.UTF8.GetBytes(tracingData))
+                     new Header("traceparent", Encoding.UTF8.GetBytes(tracingData))
                  };
-                 var deliveryReport = await _producer.ProduceAsync(topic, new Message<Null, byte[]> { Value = message, Headers = headers });
+                 var deliveryReport = await _producer.ProduceAsync(topic, new Message<Null, string> { Value = message, Headers = headers });
              
-                 _logger.LogInformation("Delivered message to {DeliveryReportTopicPartitionOffset}", deliveryReport.TopicPartitionOffset);
+                 _logger.LogInformation("Delivered message to {DeliveryReportTopicPartitionOffset}, with {TracingData}", deliveryReport.TopicPartitionOffset, tracingData);
              })!;
             
         }
